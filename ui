@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>GitHub 仓库批量删除工具（本地页面）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        /* ========= 基本布局与主题 ========= */
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --border: #e5e7eb;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --error: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        header {
+            margin-bottom: 16px;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 1.5rem;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ========= 卡片布局 ========= */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+
+        .card-title {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* ========= 表单样式 ========= */
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .form-field {
+            flex: 1 1 200px;
+            min-width: 0;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--text-muted);
+        }
+
+        .form-field input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .form-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 4px;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+            white-space: nowrap;
+            gap: 4px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: #fff;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: var(--danger-hover);
+        }
+
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #d1d5db;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ========= 消息与提示 ========= */
+        .message {
+            margin-top: 8px;
+            font-size: 0.85rem;
+        }
+
+        .message.info {
+            color: var(--text-muted);
+        }
+
+        .message.success {
+            color: var(--success);
+        }
+
+        .message.error {
+            color: var(--error);
+        }
+
+        .message.warning {
+            color: var(--warning);
+        }
+
+        .rate-limit-banner {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            background-color: #fef3c7;
+            color: #92400e;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        /* ========= 仓库表格 ========= */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        thead {
+            background-color: #f9fafb;
+        }
+
+        th, td {
+            padding: 8px 6px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        tbody tr:hover {
+            background-color: #f3f4f6;
+        }
+
+        .repo-name {
+            font-weight: 500;
+            color: var(--primary);
+            word-break: break-all;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .badge-private {
+            background-color: #fee2e2;
+            border-color: #fecaca;
+            color: #b91c1c;
+        }
+
+        .badge-public {
+            background-color: #dcfce7;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+        }
+
+        .status-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-failed {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* ========= 分页 ========= */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 0.85rem;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* ========= 日志区域 ========= */
+        .log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #111827;
+            color: #e5e7eb;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.8rem;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+        }
+
+        .log-entry span.time {
+            color: #9ca3af;
+        }
+
+        .log-entry span.level-info {
+            color: #60a5fa;
+        }
+
+        .log-entry span.level-success {
+            color: #4ade80;
+        }
+
+        .log-entry span.level-error {
+            color: #f97373;
+        }
+
+        .log-entry span.level-warning {
+            color: #facc15;
+        }
+
+        /* ========= 模态框 ========= */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(15, 23, 42, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .modal {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 16px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            margin-bottom: 8px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .modal-body {
+            font-size: 0.85rem;
+        }
+
+        .modal-body ul {
+            margin: 4px 0 8px 18px;
+            padding: 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .modal-body li {
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .modal-footer {
+            margin-top: 12px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .modal-error {
+            margin-top: 6px;
+            color: var(--error);
+            font-size: 0.8rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ========= 响应式调整 ========= */
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 1.2rem;
+            }
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .pagination {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <header>
+        <h1>GitHub 仓库批量删除工具（本地安全版）</h1>
+        <p>
+            使用 GitHub 个人访问令牌（PAT）通过官方 API 批量删除仓库。
+            所有操作在本地浏览器执行，本页面不会将令牌发送到除 GitHub 之外的任何服务器。
+        </p>
+    </header>
+
+    <!-- ========== 认证区域 ========== -->
+    <section class="card" id="auth-card">
+        <h2 class="card-title">1. GitHub 账号认证</h2>
+
+        <div class="form-row">
+            <div class="form-field">
+                <label for="username">
+                    GitHub 用户名
+                </label>
+                <input id="username" type="text" placeholder="例如：octocat">
+            </div>
+
+            <div class="form-field">
+                <label for="token">
+                    个人访问令牌（PAT）
+                </label>
+                <input id="token" type="password"
+                       placeholder="需要至少 delete_repo 权限">
+            </div>
+
+            <div>
+                <button id="btn-load-repos" class="btn btn-primary">
+                    加载仓库
+                </button>
+            </div>
+        </div>
+
+        <div id="auth-message" class="message info">
+            提示：访问令牌建议使用精确权限（Scopes）且仅在本地使用。
+        </div>
+    </section>
+
+    <!-- ========== 操作区域 ========== -->
+    <section class="card" id="controls-card">
+        <h2 class="card-title">2. 仓库列表与批量操作</h2>
+
+        <div class="form-row" style="margin-bottom: 8px;">
+            <div style="flex: 1 1 auto;">
+                <span id="current-user-label" class="message info">
+                    当前用户：尚未登录
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="btn-delete-selected" class="btn btn-danger" disabled>
+                    删除选中仓库
+                </button>
+                <button id="btn-retry-failed" class="btn btn-secondary hidden">
+                    重试失败项
+                </button>
+            </div>
+        </div>
+
+        <div id="rate-limit-banner" class="rate-limit-banner">
+            已接近 GitHub API 速率限制，请适当放慢操作节奏。
+        </div>
+
+        <div id="controls-message" class="message info">
+            仓库加载完成后，可通过勾选复选框并点击“删除选中仓库”执行批量删除。
+        </div>
+    </section>
+
+    <!-- ========== 仓库表格 ========== -->
+    <section class="card" id="repos-card">
+        <h2 class="card-title">3. 仓库列表（支持分页）</h2>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th style="width: 24px;">
+                        <input type="checkbox" id="checkbox-select-all">
+                    </th>
+                    <th>仓库名称</th>
+                    <th>可见性</th>
+                    <th>创建时间</th>
+                    <th>最后更新时间</th>
+                    <th>删除状态</th>
+                </tr>
+                </thead>
+                <tbody id="repos-tbody">
+                <!-- 仓库数据行由 JavaScript 生成 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <div>
+                <span id="pagination-info">尚未加载仓库</span>
+            </div>
+            <div class="pagination-buttons">
+                <button id="btn-prev-page" class="btn btn-secondary" disabled>上一页</button>
+                <button id="btn-next-page" class="btn btn-secondary" disabled>下一页</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== 操作日志 ========== -->
+    <section class="card" id="log-card">
+        <h2 class="card-title">4. 操作日志（仅保存在本地）</h2>
+        <div id="log-container" class="log-container">
+            <!-- 日志条目由 JavaScript 追加 -->
+        </div>
+    </section>
+</div>
+
+<!-- ========== 删除确认模态框 ========== -->
+<div id="modal-backdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>删除确认（高风险操作）</h2>
+        </div>
+        <div class="modal-body">
+            <p>
+                即将删除 <strong id="confirm-count"></strong> 个仓库。
+                仓库删除为<strong>不可逆操作</strong>，请务必确认。
+            </p>
+            <p>部分待删除仓库列表：</p>
+            <ul id="confirm-repo-list">
+                <!-- 仓库名称列表由 JavaScript 生成 -->
+            </ul>
+
+            <p>
+                为了安全，请完成二次确认：
+            </p>
+            <div class="form-field" style="margin-bottom: 6px;">
+                <label for="confirm-token">
+                    再次输入 PAT 令牌（视为敏感操作重新认证）
+                </label>
+                <input id="confirm-token" type="password" placeholder="再次输入当前使用的 PAT 令牌">
+            </div>
+
+            <div class="form-field" style="margin-bottom: 0;">
+                <label for="confirm-text">
+                    输入大写 <strong>DELETE</strong> 以确认删除
+                </label>
+                <input id="confirm-text" type="text" placeholder="请输入 DELETE（大写）">
+            </div>
+
+            <div id="modal-error" class="modal-error hidden"></div>
+        </div>
+        <div class="modal-footer">
+            <button id="btn-cancel-confirm" class="btn btn-secondary">取消</button>
+            <button id="btn-confirm-delete" class="btn btn-danger">确认删除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ======================= 全局状态对象 =======================
+    // 使用一个简单的状态对象保存当前用户、令牌、仓库列表等信息。
+    const state = {
+        username: "",
+        token: "",
+        repos: [],               // 所有仓库原始数据
+        currentPage: 1,          // 当前分页页码（从 1 开始）
+        pageSize: 20,            // 每页展示数量
+        selectedRepoFullNames: new Set(), // 被勾选的仓库 full_name 集合
+        deleting: false,         // 是否正在执行删除操作
+        failedDeletions: []      // 删除失败的仓库 full_name 列表（用于重试）
+    };
+
+    // ======================= DOM 元素引用 =======================
+    const elUsername = document.getElementById("username");
+    const elToken = document.getElementById("token");
+    const elBtnLoadRepos = document.getElementById("btn-load-repos");
+    const elAuthMessage = document.getElementById("auth-message");
+
+    const elCurrentUserLabel = document.getElementById("current-user-label");
+    const elControlsMessage = document.getElementById("controls-message");
+    const elRateLimitBanner = document.getElementById("rate-limit-banner");
+    const elBtnDeleteSelected = document.getElementById("btn-delete-selected");
+    const elBtnRetryFailed = document.getElementById("btn-retry-failed");
+
+    const elReposTbody = document.getElementById("repos-tbody");
+    const elCheckboxSelectAll = document.getElementById("checkbox-select-all");
+    const elPaginationInfo = document.getElementById("pagination-info");
+    const elBtnPrevPage = document.getElementById("btn-prev-page");
+    const elBtnNextPage = document.getElementById("btn-next-page");
+
+    const elLogContainer = document.getElementById("log-container");
+
+    const elModalBackdrop = document.getElementById("modal-backdrop");
+    const elConfirmCount = document.getElementById("confirm-count");
+    const elConfirmRepoList = document.getElementById("confirm-repo-list");
+    const elConfirmToken = document.getElementById("confirm-token");
+    const elConfirmText = document.getElementById("confirm-text");
+    const elModalError = document.getElementById("modal-error");
+    const elBtnCancelConfirm = document.getElementById("btn-cancel-confirm");
+    const elBtnConfirmDelete = document.getElementById("btn-confirm-delete");
+
+    // ======================= 日志记录工具 =======================
+    /**
+     * 追加一条操作日志到页面日志区域。
+     * @param {string} level - 日志级别：info / success / error / warning
+     * @param {string} message - 日志内容
+     */
+    function log(level, message) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+
+        const timeSpan = document.createElement("span");
+        const levelSpan = document.createElement("span");
+        const textSpan = document.createElement("span");
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString();
+
+        timeSpan.className = "time";
+        timeSpan.textContent = `[${timeStr}] `;
+
+        levelSpan.className = `level-${level}`;
+        levelSpan.textContent = `[${level.toUpperCase()}] `;
+
+        textSpan.textContent = message;
+
+        entry.appendChild(timeSpan);
+        entry.appendChild(levelSpan);
+        entry.appendChild(textSpan);
+
+        elLogContainer.appendChild(entry);
+        // 自动滚动到底部
+        elLogContainer.scrollTop = elLogContainer.scrollHeight;
+    }
+
+    // ======================= 辅助函数 =======================
+    /**
+     * 将 ISO 时间字符串格式化为本地可读形式。
+     */
+    function formatDate(iso) {
+        if (!iso) return "-";
+        const d = new Date(iso);
+        return d.toLocaleString();
+    }
+
+    /**
+     * 根据 GitHub 响应头，提示速率限制信息。
+     * @param {Headers} headers
+     */
+    function handleRateLimit(headers) {
+        const remaining = headers.get("X-RateLimit-Remaining");
+        const limit = headers.get("X-RateLimit-Limit");
+        if (!remaining || !limit) {
+            elRateLimitBanner.style.display = "none";
+            return;
+        }
+
+        const remainingNum = parseInt(remaining, 10);
+        const limitNum = parseInt(limit, 10);
+        const ratio = remainingNum / limitNum;
+
+        if (isNaN(remainingNum) || isNaN(limitNum)) {
+            elRateLimitBanner.style.display = "none";
+            return;
+        }
+
+        // 剩余请求低于 10% 或小于等于 50 时给出明显提示
+        if (ratio <= 0.1 || remainingNum <= 50) {
+            elRateLimitBanner.style.display = "block";
+            elRateLimitBanner.textContent =
+                `警告：接近 GitHub API 速率限制（${remainingNum}/${limitNum} 次请求剩余）。`;
+            log("warning", `接近速率限制：剩余 ${remainingNum}/${limitNum}。`);
+        } else {
+            elRateLimitBanner.style.display = "none";
+        }
+    }
+
+    /**
+     * 更新“删除选中”按钮的可用状态。
+     */
+    function refreshDeleteButtonState() {
+        elBtnDeleteSelected.disabled =
+            state.selectedRepoFullNames.size === 0 || state.deleting;
+    }
+
+    /**
+     * 根据当前页和选中状态刷新“全选”复选框状态。
+     */
+    function refreshSelectAllCheckbox() {
+        const currentPageRepos = getCurrentPageRepos();
+        if (currentPageRepos.length === 0) {
+            elCheckboxSelectAll.checked = false;
+            elCheckboxSelectAll.indeterminate = false;
+            return;
+        }
+
+        let selectedCount = 0;
+        currentPageRepos.forEach(repo => {
+            if (state.selectedRepoFullNames.has(repo.full_name)) {
+                selectedCount++;
+            }
+        });
+
+        if (selectedCount === 0) {
+            elCheckboxSelectAll.checked = false;
+            elCheckboxSelectAll.indeterminate = false;
+        } else if (selectedCount === currentPageRepos.length) {
+            elCheckboxSelectAll.checked = true;
+            elCheckboxSelectAll.indeterminate = false;
+        } else {
+            elCheckboxSelectAll.checked = false;
+            elCheckboxSelectAll.indeterminate = true;
+        }
+    }
+
+    /**
+     * 获取当前分页的仓库子数组。
+     */
+    function getCurrentPageRepos() {
+        const start = (state.currentPage - 1) * state.pageSize;
+        const end = start + state.pageSize;
+        return state.repos.slice(start, end);
+    }
+
+    /**
+     * 渲染仓库表格和分页信息。
+     */
+    function renderRepos() {
+        const total = state.repos.length;
+
+        if (total === 0) {
+            elReposTbody.innerHTML = "";
+            elPaginationInfo.textContent = "尚未加载仓库";
+            elBtnPrevPage.disabled = true;
+            elBtnNextPage.disabled = true;
+            refreshDeleteButtonState();
+            refreshSelectAllCheckbox();
+            return;
+        }
+
+        const totalPages = Math.ceil(total / state.pageSize);
+        if (state.currentPage > totalPages) {
+            state.currentPage = totalPages;
+        }
+
+        const currentPageRepos = getCurrentPageRepos();
+
+        // 构建表格行
+        const rows = currentPageRepos.map(repo => {
+            const isSelected = state.selectedRepoFullNames.has(repo.full_name);
+            const visibilityBadge = repo.private
+                ? `<span class="badge badge-private">私有</span>`
+                : `<span class="badge badge-public">公开</span>`;
+
+            // 删除状态：根据删除失败列表标记
+            let statusHtml = "";
+            if (state.failedDeletions.includes(repo.full_name)) {
+                statusHtml = `<span class="status-pill status-failed">删除失败</span>`;
+            } else {
+                statusHtml = `<span class="status-pill status-success" style="display:none;">已删除</span>`;
+            }
+
+            return `
+                <tr data-full-name="${repo.full_name}">
+                    <td>
+                        <input type="checkbox"
+                               class="repo-checkbox"
+                               data-full-name="${repo.full_name}"
+                               ${isSelected ? "checked" : ""}>
+                    </td>
+                    <td>
+                        <span class="repo-name">${repo.full_name}</span>
+                    </td>
+                    <td>${visibilityBadge}</td>
+                    <td>${formatDate(repo.created_at)}</td>
+                    <td>${formatDate(repo.updated_at)}</td>
+                    <td class="status-cell">
+                        ${statusHtml}
+                    </td>
+                </tr>
+            `;
+        });
+
+        elReposTbody.innerHTML = rows.join("");
+
+        // 更新分页信息
+        elPaginationInfo.textContent =
+            `共 ${total} 个仓库，当前第 ${state.currentPage}/${totalPages} 页`;
+
+        elBtnPrevPage.disabled = state.currentPage <= 1;
+        elBtnNextPage.disabled = state.currentPage >= totalPages;
+
+        // 绑定每个复选框的事件
+        const checkboxes = elReposTbody.querySelectorAll(".repo-checkbox");
+        checkboxes.forEach(cb => {
+            cb.addEventListener("change", (e) => {
+                const fullName = e.target.getAttribute("data-full-name");
+                if (e.target.checked) {
+                    state.selectedRepoFullNames.add(fullName);
+                } else {
+                    state.selectedRepoFullNames.delete(fullName);
+                }
+                refreshDeleteButtonState();
+                refreshSelectAllCheckbox();
+            });
+        });
+
+        refreshDeleteButtonState();
+        refreshSelectAllCheckbox();
+    }
+
+    // ======================= GitHub API 封装 =======================
+    /**
+     * 基于当前令牌获取登录用户信息，用于展示“当前用户”。
+     */
+    async function fetchCurrentUser() {
+        const resp = await fetch("https://api.github.com/user", {
+            method: "GET",
+            headers: {
+                "Authorization": `token ${state.token}`,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+
+        handleRateLimit(resp.headers);
+
+        if (!resp.ok) {
+            throw resp;
+        }
+
+        return resp.json();
+    }
+
+    /**
+     * 使用 GitHub API 分页获取所有仓库。
+     * 默认遍历 /user/repos，直到返回数量少于 per_page。
+     */
+    async function fetchAllRepos() {
+        const perPage = 100; // 每次请求 100 条，以减少调用次数
+        let page = 1;
+        let allRepos = [];
+
+        log("info", "开始从 GitHub 加载仓库列表…");
+
+        while (true) {
+            const url = `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated`;
+            const resp = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Authorization": `token ${state.token}`,
+                    "Accept": "application/vnd.github+json"
+                }
+            });
+
+            handleRateLimit(resp.headers);
+
+            if (!resp.ok) {
+                throw resp;
+            }
+
+            const data = await resp.json();
+            allRepos = allRepos.concat(data);
+
+            log("info", `已加载第 ${page} 页，当前合计 ${allRepos.length} 个仓库。`);
+
+            if (data.length < perPage) {
+                break;
+            }
+            page++;
+        }
+
+        // 按最后更新时间倒序排序
+        allRepos.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+        return allRepos;
+    }
+
+    /**
+     * 删除单个仓库。
+     * @param {string} fullName - 仓库完整名（owner/name）
+     */
+    async function deleteRepo(fullName) {
+        const url = `https://api.github.com/repos/${fullName}`;
+        const resp = await fetch(url, {
+            method: "DELETE",
+            headers: {
+                "Authorization": `token ${state.token}`,
+                "Accept": "application/vnd.github+json"
+            }
+        });
+
+        handleRateLimit(resp.headers);
+
+        if (resp.status === 204) {
+            // 204 表示删除成功
+            return;
+        }
+
+        // 404 视为“已不存在”，可按成功处理，但给出提示
+        if (resp.status === 404) {
+            log("warning", `仓库 ${fullName} 返回 404，可能已被删除。视为成功。`);
+            return;
+        }
+
+        // 401/403 通常代表认证失败或权限不足
+        if (resp.status === 401 || resp.status === 403) {
+            const text = await resp.text();
+            throw new Error(`删除失败：未认证或权限不足（HTTP ${resp.status}）。响应：${text}`);
+        }
+
+        const text = await resp.text();
+        throw new Error(`删除失败：HTTP ${resp.status}，响应：${text}`);
+    }
+
+    // ======================= 事件逻辑：加载仓库 =======================
+    /**
+     * 响应“加载仓库”按钮点击：检查输入并拉取仓库列表。
+     */
+    async function handleLoadRepos() {
+        const username = elUsername.value.trim();
+        const token = elToken.value.trim();
+
+        if (!username || !token) {
+            elAuthMessage.textContent = "请同时填写 GitHub 用户名和 PAT 令牌。";
+            elAuthMessage.className = "message error";
+            return;
+        }
+
+        state.username = username;
+        state.token = token;
+        state.currentPage = 1;
+        state.selectedRepoFullNames.clear();
+        state.failedDeletions = [];
+        elBtnRetryFailed.classList.add("hidden");
+        elCheckboxSelectAll.checked = false;
+        elCheckboxSelectAll.indeterminate = false;
+
+        elBtnLoadRepos.disabled = true;
+        elAuthMessage.textContent = "正在验证令牌并加载仓库，请稍候…";
+        elAuthMessage.className = "message info";
+        elControlsMessage.textContent = "正在加载仓库列表…";
+        elControlsMessage.className = "message info";
+        log("info", "开始认证并加载仓库。");
+
+        try {
+            // 获取当前用户信息
+            const user = await fetchCurrentUser();
+            elCurrentUserLabel.textContent = `当前用户：${user.login}（ID: ${user.id}）`;
+            elCurrentUserLabel.className = "message success";
+            log("success", `认证成功，当前用户：${user.login}。`);
+
+            // 获取所有仓库
+            const repos = await fetchAllRepos();
+            state.repos = repos;
+            state.currentPage = 1;
+            renderRepos();
+
+            elAuthMessage.textContent =
+                `加载成功：共获取到 ${repos.length} 个仓库。`;
+            elAuthMessage.className = "message success";
+            elControlsMessage.textContent =
+                "选择要删除的仓库后点击“删除选中仓库”。";
+            elControlsMessage.className = "message info";
+
+            log("success", `仓库加载完成，共 ${repos.length} 个。`);
+        } catch (err) {
+            // 处理 fetchCurrentUser 或 fetchAllRepos 抛出的错误
+            console.error(err);
+            let msg = "加载仓库失败，请检查网络或令牌权限。";
+
+            if (err instanceof Response) {
+                if (err.status === 401) {
+                    msg = "认证失败：令牌无效或已过期（HTTP 401）。";
+                } else if (err.status === 403) {
+                    msg = "权限不足或触发速率限制（HTTP 403）。";
+                } else {
+                    msg = `请求失败：HTTP ${err.status}。`;
+                }
+            } else if (err instanceof Error) {
+                msg = err.message;
+            }
+
+            elAuthMessage.textContent = msg;
+            elAuthMessage.className = "message error";
+            elControlsMessage.textContent = "加载失败，可修改令牌后重试。";
+            elControlsMessage.className = "message error";
+            log("error", msg);
+        } finally {
+            elBtnLoadRepos.disabled = false;
+            refreshDeleteButtonState();
+        }
+    }
+
+    // ======================= 事件逻辑：分页 =======================
+    elBtnPrevPage.addEventListener("click", () => {
+        if (state.currentPage > 1) {
+            state.currentPage--;
+            renderRepos();
+        }
+    });
+
+    elBtnNextPage.addEventListener("click", () => {
+        const totalPages = Math.ceil(state.repos.length / state.pageSize);
+        if (state.currentPage < totalPages) {
+            state.currentPage++;
+            renderRepos();
+        }
+    });
+
+    /**
+     * “全选/反选”复选框事件：只作用于当前页。
+     */
+    elCheckboxSelectAll.addEventListener("change", (e) => {
+        const checked = e.target.checked;
+        const currentPageRepos = getCurrentPageRepos();
+        currentPageRepos.forEach(repo => {
+            if (checked) {
+                state.selectedRepoFullNames.add(repo.full_name);
+            } else {
+                state.selectedRepoFullNames.delete(repo.full_name);
+            }
+        });
+
+        // 更新当前页每一行的勾选状态
+        const checkboxes = elReposTbody.querySelectorAll(".repo-checkbox");
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+        });
+
+        refreshDeleteButtonState();
+        refreshSelectAllCheckbox();
+    });
+
+    // ======================= 事件逻辑：删除确认与执行 =======================
+    /**
+     * 打开删除确认模态框，展示即将删除的仓库数量和部分名称。
+     */
+    function openConfirmModal() {
+        const selected = Array.from(state.selectedRepoFullNames);
+        if (selected.length === 0) return;
+
+        elConfirmCount.textContent = String(selected.length);
+
+        // 最多展示前 10 个仓库名称，避免列表过长
+        const showCount = Math.min(selected.length, 10);
+        elConfirmRepoList.innerHTML = "";
+        for (let i = 0; i < showCount; i++) {
+            const li = document.createElement("li");
+            li.textContent = selected[i];
+            elConfirmRepoList.appendChild(li);
+        }
+        if (selected.length > showCount) {
+            const li = document.createElement("li");
+            li.textContent = `…… 以及另外 ${selected.length - showCount} 个仓库`;
+            elConfirmRepoList.appendChild(li);
+        }
+
+        elConfirmToken.value = "";
+        elConfirmText.value = "";
+        elModalError.textContent = "";
+        elModalError.classList.add("hidden");
+
+        elModalBackdrop.style.display = "flex";
+    }
+
+    /**
+     * 关闭删除确认模态框。
+     */
+    function closeConfirmModal() {
+        elModalBackdrop.style.display = "none";
+    }
+
+    /**
+     * 确认删除：验证二次认证信息（PAT + DELETE 文本）。
+     */
+    async function handleConfirmDelete() {
+        const reToken = elConfirmToken.value.trim();
+        const text = elConfirmText.value.trim();
+
+        if (!reToken) {
+            elModalError.textContent = "请再次输入 PAT 令牌以完成敏感操作认证。";
+            elModalError.classList.remove("hidden");
+            return;
+        }
+
+        if (reToken !== state.token) {
+            elModalError.textContent = "两次输入的令牌不一致，请确认后重试。";
+            elModalError.classList.remove("hidden");
+            return;
+        }
+
+        if (text !== "DELETE") {
+            elModalError.textContent = "确认文本错误，请输入大写 DELETE。";
+            elModalError.classList.remove("hidden");
+            return;
+        }
+
+        elModalError.textContent = "";
+        elModalError.classList.add("hidden");
+        closeConfirmModal();
+
+        // 开始执行删除操作
+        await performBatchDelete(Array.from(state.selectedRepoFullNames));
+    }
+
+    /**
+     * 执行批量删除逻辑：逐个调用 GitHub 删除接口，并反馈进度与结果。
+     * @param {string[]} repoFullNames - 待删除仓库 full_name 列表
+     */
+    async function performBatchDelete(repoFullNames) {
+        if (repoFullNames.length === 0) return;
+
+        state.deleting = true;
+        refreshDeleteButtonState();
+        elBtnRetryFailed.classList.add("hidden");
+        state.failedDeletions = [];
+
+        const total = repoFullNames.length;
+        let successCount = 0;
+
+        elControlsMessage.textContent = `正在删除仓库（共 ${total} 个）…`;
+        elControlsMessage.className = "message warning";
+        log("warning", `开始批量删除 ${total} 个仓库。`);
+
+        // 顺序执行删除，可根据需要改为并发（但需注意速率限制与错误处理）
+        for (let i = 0; i < repoFullNames.length; i++) {
+            const fullName = repoFullNames[i];
+            const index = i + 1;
+
+            try {
+                log("info", `(${index}/${total}) 删除中：${fullName}`);
+                await deleteRepo(fullName);
+
+                // 从状态中移除该仓库
+                state.repos = state.repos.filter(r => r.full_name !== fullName);
+                state.selectedRepoFullNames.delete(fullName);
+
+                successCount++;
+                log("success", `(${index}/${total}) 删除成功：${fullName}`);
+            } catch (err) {
+                console.error(err);
+                state.failedDeletions.push(fullName);
+                const msg = err instanceof Error ? err.message : String(err);
+                log("error", `(${index}/${total}) 删除失败：${fullName}；原因：${msg}`);
+            }
+
+            // 每次删除后重新渲染列表，便于用户看到即时变化
+            renderRepos();
+        }
+
+        state.deleting = false;
+        refreshDeleteButtonState();
+
+        const failedCount = state.failedDeletions.length;
+        if (failedCount === 0) {
+            elControlsMessage.textContent =
+                `批量删除完成，成功删除 ${successCount}/${total} 个仓库。`;
+            elControlsMessage.className = "message success";
+            log("success", `批量删除完成，全部 ${total} 个仓库删除成功。`);
+        } else {
+            elControlsMessage.textContent =
+                `批量删除完成，成功 ${successCount} 个，失败 ${failedCount} 个，可点击“重试失败项”。`;
+            elControlsMessage.className = "message error";
+            elBtnRetryFailed.classList.remove("hidden");
+            log("error",
+                `批量删除完成：成功 ${successCount}/${total}，失败 ${failedCount}/${total}。`);
+        }
+
+        // 删除完后重置“全选”状态
+        elCheckboxSelectAll.checked = false;
+        elCheckboxSelectAll.indeterminate = false;
+    }
+
+    /**
+     * 重试上一次删除失败的仓库列表。
+     */
+    async function handleRetryFailed() {
+        if (state.failedDeletions.length === 0) {
+            elControlsMessage.textContent = "当前没有可重试的失败项。";
+            elControlsMessage.className = "message info";
+            return;
+        }
+
+        const toRetry = [...state.failedDeletions];
+        state.selectedRepoFullNames = new Set(toRetry);
+        refreshDeleteButtonState();
+        openConfirmModal();
+    }
+
+    // ======================= 事件绑定：按钮与模态框 =======================
+    elBtnLoadRepos.addEventListener("click", () => {
+        handleLoadRepos();
+    });
+
+    elBtnDeleteSelected.addEventListener("click", () => {
+        if (state.selectedRepoFullNames.size === 0) {
+            return;
+        }
+        openConfirmModal();
+    });
+
+    elBtnRetryFailed.addEventListener("click", () => {
+        handleRetryFailed();
+    });
+
+    elBtnCancelConfirm.addEventListener("click", () => {
+        closeConfirmModal();
+    });
+
+    elBtnConfirmDelete.addEventListener("click", () => {
+        handleConfirmDelete();
+    });
+
+    // 点击模态框外部区域时关闭模态框（可选）
+    elModalBackdrop.addEventListener("click", (e) => {
+        if (e.target === elModalBackdrop) {
+            closeConfirmModal();
+        }
+    });
+
+    // ======================= 初始日志与提示 =======================
+    log("info", "页面加载完成。请先填写 GitHub 用户名和 PAT 令牌。");
+    log("info", "注意：删除仓库为不可逆操作，请务必审慎使用本工具。");
+</script>
+</body>
+</html>
